@@ -54,6 +54,12 @@ class Demangler:
 		if isinstance(func,int):
 			func = idaapi.get_func_name(func)
 		assert isinstance(func,str)
+
+		# global constructors
+		if func.startswith("_GLOBAL__sub_I_"):
+			faddr = idc.get_name_ea_simple(func)
+			func = func[15:]
+
 		dfname = idc_demangle_function(func)
 		if dfname is None:
 			return None
