@@ -1,7 +1,9 @@
 import idaapi
 import idc
 
-COLOR_CALL = 0xffffd0
+# COLOR_CALL = 0xffffd0
+# BGR
+COLOR_CALL = 0x505000
 
 
 if __name__ == "__main__":
