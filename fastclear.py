@@ -27,6 +27,9 @@ class MyHandler(idaapi.action_handler_t):
 	def update(self, ctx):
 		return idaapi.AST_ENABLE_ALWAYS
 
+if idaapi.get_action_shortcut("Quit") == "Alt-X":
+	idaapi.update_action_shortcut("Quit", None)
+
 action_desc = idaapi.action_desc_t(
 	'fast:clear',   # The action name. This acts like an ID and must be unique
 	'Quickly clears output window',  # The action text.
