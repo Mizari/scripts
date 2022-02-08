@@ -1,3 +1,4 @@
+import struct
 import ida_struct
 import idaapi
 
@@ -56,6 +57,10 @@ def remove_spaces_from_structures():
 			print("Failed to remove spaces from", struct_name)
 			continue
 
+		if idaapi.get_struc_id(new_struct_name) != idaapi.BADADDR:
+			print(new_struct_name, "already exists, cannot rename", struct_name)
+			continue
+
 		if ' ' in new_struct_name:
 			print("Not all spaces are removed from", struct_name, '\n', "Still trying to rename")
 
@@ -73,6 +78,10 @@ def remove_spaces_from_local_types():
 		if ' ' not in type_name: continue
 		new_name = remove_spaces_from_name(type_name)
 		if new_name == type_name: continue
+
+		if idaapi.get_named_type(idaapi.get_idati(), new_name, idaapi.NTF_TYPE) is not None:
+			print(new_name, "already exists, cannot rename", type_name)
+			continue
 
 		if ' ' in new_name:
 			print("Not all spaces are removed from", i, type_name, "still trying to rename")
