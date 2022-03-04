@@ -5,24 +5,8 @@ class MyHandler(idaapi.action_handler_t):
 		idaapi.action_handler_t.__init__(self)
 
 	def activate(self, ctx):
-		curr = idaapi.get_current_widget()
-
-		form = idaapi.find_widget("Output window")
-		w = idaapi.PluginForm.FormToPyQtWidget(form)
-		w.activateWindow()
-		w.setFocus()
-		idaapi.process_ui_action("msglist:Clear")
-
-		form = idaapi.find_widget("Output")
-		w = idaapi.PluginForm.FormToPyQtWidget(form)
-		w.activateWindow()
-		w.setFocus()
-		idaapi.process_ui_action("msglist:Clear")
-
-		w = idaapi.PluginForm.FormToPyQtWidget(curr)
-		w.activateWindow()
-		w.setFocus()
-		return 1
+		idaapi.msg_clear()
+		return 0
 
 	def update(self, ctx):
 		return idaapi.AST_ENABLE_ALWAYS
