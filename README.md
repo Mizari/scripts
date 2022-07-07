@@ -7,6 +7,9 @@ Will try to find C strings in .data Segments and make them constant for better r
 **demangler.py**  
 Script for mass demangling function names. Allows for better control of what to skip.
 
+**detect_offsets.py**
+Will try to find integers in .data segment, that point to valid memory, and then make them pointers. It helps with analysis
+
 **fastclear.py**  
 Script, that adds action (Ctrl-X instead of default Quit) for output window clearing. Works everywhere.
 

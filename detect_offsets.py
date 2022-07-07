@@ -23,9 +23,10 @@ def get_offsets(start, end):
 	print('ints sets', ints_set)
 
 for segea in idautils.Segments():
+	segname = idc.get_segm_name(segea)
+	if segname != ".data":
+		continue
+
 	segstart = idc.get_segm_start(segea)
 	segend = idc.get_segm_end(segea)
-
-START = 0x4fc810
-END   = 0x5753e0
-get_offsets(START, END)
+	get_offsets(segstart, segend)
