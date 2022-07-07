@@ -1,6 +1,9 @@
 # scripts
 Various scripts for IDA Pro
 
+**const_adder.py**
+Will try to find C strings in .data Segments and make them constant for better representation in HexRays window
+
 **demangler.py**  
 Script for mass demangling function names. Allows for better control of what to skip.
 
