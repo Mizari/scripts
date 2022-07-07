@@ -4,17 +4,6 @@ import idc
 import re
 
 
-def iterate_all_functions():
-	for segea in idautils.Segments():
-		for funcea in idautils.Functions(segea, idc.get_segm_end(segea)):
-			yield funcea
-	# TODO demangle imports?
-
-
-def idc_demangle_function(func_name:str) -> str:
-	return idaapi.demangle_name(func_name, idaapi.MNG_NODEFINIT | idaapi.MNG_NORETTYPE)
-
-
 class Demangler:
 	# regular expression to replace some illegal c++ mangle chars for IDA names
 	ILLEGAL_CHARS = "`',()<>*+-/.&={}#!"
@@ -54,9 +43,8 @@ class Demangler:
 		if string_to_demangle.startswith("_GLOBAL__sub_I_"):
 			string_to_demangle = string_to_demangle[15:]
 
-		dfname = idc_demangle_function(string_to_demangle)
-		if dfname is None:
-			return None
+		dfname = idaapi.demangle_name(string_to_demangle, idaapi.MNG_NODEFINIT | idaapi.MNG_NORETTYPE)
+		if dfname is None: return None
 		return self.post_demangle(dfname)
 
 	@classmethod
@@ -93,6 +81,7 @@ class Demangler:
 		return func_name
 
 	def post_demangle(self, func_name):
+		original_name = func_name
 		def apply_func(func, skip_option):
 			nonlocal func_name
 			if func_name is None: return None
@@ -108,6 +97,9 @@ class Demangler:
 
 		if func_name is not None and ' ' in func_name:
 			return None
+
+		if func_name is None:
+			print("Failed to demangle", original_name)
 
 		return func_name
 
@@ -232,5 +224,10 @@ def demangle_all_objects(skipoptions=()):
 
 
 def demangle_all_functions(skipoptions=()):
+	def iterate_all_functions():
+		for segea in idautils.Segments():
+			for funcea in idautils.Functions(segea, idc.get_segm_end(segea)):
+				yield funcea
+		# TODO demangle imports?
 	func_names = [idaapi.get_func_name(fea) for fea in iterate_all_functions()]
 	return demangle_selected_objects(*func_names, skipoptions=skipoptions)
