@@ -24,10 +24,9 @@ class Demangler:
 	DETEMPLATER = r"[<][^<>]*[>]"
 	DETEMPLATER = re.compile(DETEMPLATER)
 
-	# if demangled function starts with this prefix, then skip renaming it
+	# if demangled function starts with this prefix, then skip demangling it
 	PREFIX_SKIP_LIST = [
 		"fmt::v7",
-		"std::",
 		"spdlog::",
 		"__gnu_cxx::",
 		"boost::",
@@ -50,17 +49,12 @@ class Demangler:
 	def __init__(self, skipoptions=()):
 		self.skip_options = skipoptions
 
-	def demangle_function(self, func):
-		if isinstance(func,int):
-			func = idaapi.get_func_name(func)
-		assert isinstance(func,str)
-
+	def demangle_string(self, string_to_demangle: str):
 		# global constructors
-		if func.startswith("_GLOBAL__sub_I_"):
-			faddr = idc.get_name_ea_simple(func)
-			func = func[15:]
+		if string_to_demangle.startswith("_GLOBAL__sub_I_"):
+			string_to_demangle = string_to_demangle[15:]
 
-		dfname = idc_demangle_function(func)
+		dfname = idc_demangle_function(string_to_demangle)
 		if dfname is None:
 			return None
 		return self.post_demangle(dfname)
@@ -104,13 +98,16 @@ class Demangler:
 			if func_name is None: return None
 			if skip_option in self.skip_options:
 				return func_name
-			func_name =func(func_name)
+			func_name = func(func_name)
 
 		apply_func(self.apply_removes,     "noremoves")
 		apply_func(self.apply_prefixes,    "noprefixes")
 		apply_func(self.apply_detemplater, "nodetemplater")
 		apply_func(self.apply_illegals,    "noillegals")
 		apply_func(self.apply_detilder,    "nodetilder")
+
+		if func_name is not None and ' ' in func_name:
+			return None
 
 		return func_name
 
@@ -165,27 +162,32 @@ class Renamer:
 	def count_conflicts(self):
 		return sum(len(x) for x in self.conflicting_names.values())
 
+	def print_info(self):
+		self.print_renamed()
+		self.print_fails()
+		self.print_conflits()
+
 	def print_conflits(self, print_full=False):
 		print("conflicting_functions", self.count_conflicts())
-		for new_name, funcs in self.conflicting_names.items():
-			print("conflicted dfname" + '(' + str(len(funcs)) + ')', new_name)
+		for new_name, objects in self.conflicting_names.items():
+			print("conflicted dfname" + '(' + str(len(objects)) + ')', new_name)
 			if print_full == False: continue
 
-			for funcea in funcs:
-				fname = idaapi.get_func_name(funcea)
-				print('\t', hex(funcea), fname)
+			for obj_ea in objects:
+				name = idaapi.get_name(obj_ea)
+				print('\t', hex(obj_ea), name)
 
 	def print_fails(self):
 		print("failed renames", len(self.renames_failed))
-		for funcea, new_name in self.renames_failed.items():
-			funcname = idaapi.get_func_name(funcea)
-			print("failed to rename", funcname, "to", new_name)
+		for obj_ea, new_name in self.renames_failed.items():
+			obj_name = idaapi.get_name(obj_ea)
+			print("failed to rename", obj_name, "to", new_name)
 
 	def print_renamed(self):
 		print("total renamed:", len(self.renames_applied))
-		for funcea, new_name in self.renames_applied.items():
-			funcname = idaapi.get_func_name(funcea)
-			print("successfully renamed", funcname, "to", new_name)
+		for obj_ea, new_name in self.renames_applied.items():
+			obj_name = idaapi.get_name(obj_ea)
+			print("successfully renamed", obj_name, "at", hex(obj_ea), "to", new_name)
 
 	def apply_renames(self):
 		for new_name, funcea in self.functions_to_rename.items():
@@ -197,33 +199,38 @@ class Renamer:
 		self.functions_to_rename.clear()
 
 
-def demangle_selected(*addresses, skipoptions=()):
+def demangle_selected_objects(*addresses, skipoptions=()):
 	renamer = Renamer()
 	demangler = Demangler(skipoptions=skipoptions)
 
 	for obj_ea in addresses:
 		name = idaapi.get_name(obj_ea)
-		demangled_name = demangler.demangle_function(name)
-		if demangled_name is None:
-			continue
+		if name == '': continue
+
+		demangled_name = demangler.demangle_string(name)
+		if demangled_name is None: continue
+
 		renamer.add_rename(obj_ea, demangled_name)
 
 	renamer.resolve_conflicts()
 	renamer.apply_renames()
 	return renamer
 
-
-def demangle_all(skipoptions=()):
-	renamer = Renamer()
-	demangler = Demangler(skipoptions=skipoptions)
-
-	for funcea in iterate_all_functions():
-		fname = idaapi.get_func_name(funcea)
-		dfname = demangler.demangle_function(fname)
-		if dfname is None:
+def demangle_all_objects(skipoptions=()):
+	addresses = []
+	for segea in idautils.Segments():
+		segname = idc.get_segm_name(segea)
+		if segname not in (".data", ".idata"):
 			continue
-		renamer.add_rename(funcea, dfname)
 
-	renamer.resolve_conflicts()
-	renamer.apply_renames()
-	return renamer
+		segstart = idc.get_segm_start(segea)
+		segend = idc.get_segm_end(segea)
+		for i in range(segstart, segend):
+			if idaapi.get_name(i) != '':
+				addresses.append(i)
+	return demangle_selected_objects(*addresses, skipoptions=skipoptions)
+
+
+def demangle_all_functions(skipoptions=()):
+	func_names = [idaapi.get_func_name(fea) for fea in iterate_all_functions()]
+	return demangle_selected_objects(*func_names, skipoptions=skipoptions)
