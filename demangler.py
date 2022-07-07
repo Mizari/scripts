@@ -47,8 +47,8 @@ class Demangler:
 		"[abi:cxx11]",
 	]
 
-	def __init__(self, **options):
-		self.options = options
+	def __init__(self, skipoptions=()):
+		self.skipoptions = skipoptions
 
 	def demangle_function(self, func):
 		if isinstance(func,int):
@@ -102,7 +102,7 @@ class Demangler:
 		def apply_func(func, skipoption):
 			nonlocal func_name
 			if func_name is None: return None
-			if self.options.get(skipoption, False) != False:
+			if self.skipoptions.get(skipoption, False) != False:
 				return func_name
 			func_name =func(func_name)
 
@@ -116,12 +116,11 @@ class Demangler:
 
 
 class Renamer:
-	def __init__(self, **options):
+	def __init__(self):
 		self.functions_to_rename = {}
 		self.conflicting_names = {}
 		self.renames_applied = {}
 		self.renames_failed = {}
-		self.options = options
 
 	def add_conflict(self, funcea, new_name):
 		conflicts = self.conflicting_names.setdefault(new_name, [])
@@ -198,9 +197,9 @@ class Renamer:
 		self.functions_to_rename.clear()
 
 
-def demangle_selected(*addresses, **options):
-	renamer = Renamer(**options)
-	demangler = Demangler(**options)
+def demangle_selected(*addresses, skipoptions=()):
+	renamer = Renamer()
+	demangler = Demangler(skipoptions=skipoptions)
 
 	for obj_ea in addresses:
 		name = idaapi.get_func_name(obj_ea)
@@ -214,9 +213,9 @@ def demangle_selected(*addresses, **options):
 	return renamer
 
 
-def demangle_all(**options):
-	renamer = Renamer(**options)
-	demangler = Demangler(**options)
+def demangle_all(skipoptions=()):
+	renamer = Renamer()
+	demangler = Demangler(skipoptions=skipoptions)
 
 	for funcea in iterate_all_functions():
 		fname = idaapi.get_func_name(funcea)
