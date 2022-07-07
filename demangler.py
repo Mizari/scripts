@@ -48,7 +48,7 @@ class Demangler:
 	]
 
 	def __init__(self, skipoptions=()):
-		self.skipoptions = skipoptions
+		self.skip_options = skipoptions
 
 	def demangle_function(self, func):
 		if isinstance(func,int):
@@ -99,10 +99,10 @@ class Demangler:
 		return func_name
 
 	def post_demangle(self, func_name):
-		def apply_func(func, skipoption):
+		def apply_func(func, skip_option):
 			nonlocal func_name
 			if func_name is None: return None
-			if self.skipoptions.get(skipoption, False) != False:
+			if skip_option in self.skip_options:
 				return func_name
 			func_name =func(func_name)
 
