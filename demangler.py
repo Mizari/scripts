@@ -198,6 +198,22 @@ class Renamer:
 		self.functions_to_rename.clear()
 
 
+def demangle_selected(*addresses, **options):
+	renamer = Renamer(**options)
+	demangler = Demangler(**options)
+
+	for obj_ea in addresses:
+		name = idaapi.get_func_name(obj_ea)
+		demangled_name = demangler.demangle_function(name)
+		if demangled_name is None:
+			continue
+		renamer.add_rename(obj_ea, demangled_name)
+
+	renamer.resolve_conflicts()
+	renamer.apply_renames()
+	return renamer
+
+
 def demangle_all(**options):
 	renamer = Renamer(**options)
 	demangler = Demangler(**options)
