@@ -202,7 +202,7 @@ def demangle_selected(*addresses, skipoptions=()):
 	demangler = Demangler(skipoptions=skipoptions)
 
 	for obj_ea in addresses:
-		name = idaapi.get_func_name(obj_ea)
+		name = idaapi.get_name(obj_ea)
 		demangled_name = demangler.demangle_function(name)
 		if demangled_name is None:
 			continue
