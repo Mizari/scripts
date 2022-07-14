@@ -1,15 +1,19 @@
 import idaapi, idc, idautils
 import re
 
-def is_good_string(ea, sz):
-	for i in range(sz-1):
-		if not idaapi.is_loaded(ea):
-			return False
 
-		b = idaapi.get_byte(ea + i)
-		if b == 0 or b == 0xff:
-			return False
-	return True
+def get_c_string(ea):
+	s = ""
+	while True:
+		if not idaapi.is_loaded(ea):
+			break
+
+		c = idaapi.get_byte(ea)
+		if c == 0 or c == 0xff:
+			break
+		s += chr(c)
+		ea += 1
+	return s
 
 r = re.compile("char\[([0-9]+)\]")
 tif = idaapi.tinfo_t()
@@ -26,16 +30,18 @@ for segea in idautils.Segments():
 		if not idaapi.get_type(ea, tif, 3):
 			continue
 
-		if not r.match(str(tif)):
+		if idaapi.get_name(ea) == '':
 			continue
 
-
-		n = str(tif)[5:-1]
-		n = int(n)
-
-		if not is_good_string(ea, n):
+		type_string = str(tif)
+		if type_string != "char []" and r.match(type_string):
 			continue
-		print("found at", hex(ea), tif, n)
+
+		cstr = get_c_string(ea)
+		if len(cstr) < 3:
+			continue
+
+		print("found at", hex(ea), tif, cstr)
 
 		new_const_type = "const " + str(tif)
 		idc.SetType(ea, new_const_type)
