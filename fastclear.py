@@ -23,3 +23,19 @@ action_desc = idaapi.action_desc_t(
 	199)           # Optional: the action icon (shows when in menus/toolbars)
 
 idaapi.register_action(action_desc)
+
+class FastclearPlugin(idaapi.plugin_t):
+	flags = 0
+	wanted_name = "fastclear"
+
+	def init(self):
+		return idaapi.PLUGIN_SKIP
+	
+	def run(self, arg):
+		return
+
+	def term(self):
+		return
+
+def PLUGIN_ENTRY():
+	return FastclearPlugin()
