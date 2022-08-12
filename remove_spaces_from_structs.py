@@ -90,3 +90,7 @@ def remove_spaces_from_local_types():
 
 remove_spaces_from_structures()
 remove_spaces_from_local_types()
+
+if __name__ == "__main__":
+	remove_spaces_from_structures()
+	remove_spaces_from_local_types()

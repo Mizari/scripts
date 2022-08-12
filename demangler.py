@@ -231,3 +231,13 @@ def demangle_all_functions(skipoptions=()):
 		# TODO demangle imports?
 	func_names = [idaapi.get_func_name(fea) for fea in iterate_all_functions()]
 	return demangle_selected_objects(*func_names, skipoptions=skipoptions)
+
+def main():
+	print("demangling functions")
+	demangle_all_functions()
+
+	print("demangling objects")
+	demangle_all_objects()
+
+if __name__ == "__main__":
+	main()

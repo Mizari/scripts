@@ -22,11 +22,15 @@ def get_offsets(start, end):
 		iterator += 4
 	print('ints sets', ints_set)
 
-for segea in idautils.Segments():
-	segname = idc.get_segm_name(segea)
-	if segname != ".data":
-		continue
+def get_offsets_everywhere():
+	for segea in idautils.Segments():
+		segname = idc.get_segm_name(segea)
+		if segname != ".data":
+			continue
 
-	segstart = idc.get_segm_start(segea)
-	segend = idc.get_segm_end(segea)
-	get_offsets(segstart, segend)
+		segstart = idc.get_segm_start(segea)
+		segend = idc.get_segm_end(segea)
+		get_offsets(segstart, segend)
+
+if __name__ == "__main__":
+	get_offsets_everywhere()
