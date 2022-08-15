@@ -110,6 +110,7 @@ class Renamer:
 		self.conflicting_names = {}
 		self.renames_applied = {}
 		self.renames_failed = {}
+		self.original_names = {}
 
 	def add_conflict(self, funcea, new_name):
 		conflicts = self.conflicting_names.setdefault(new_name, [])
@@ -132,6 +133,8 @@ class Renamer:
 			self.add_conflict(funcea, new_name)
 			return
 
+		orig_name = idaapi.get_name(funcea)
+		self.original_names[funcea] = orig_name
 		self.functions_to_rename[new_name] = funcea
 
 	def resolve_conflicts(self):
@@ -172,13 +175,13 @@ class Renamer:
 	def print_fails(self):
 		print("failed renames", len(self.renames_failed))
 		for obj_ea, new_name in self.renames_failed.items():
-			obj_name = idaapi.get_name(obj_ea)
-			print("failed to rename", obj_name, "to", new_name)
+			obj_name = self.original_names.get(obj_ea)
+			print("failed to rename", obj_name, "at", hex(obj_ea), "to", new_name)
 
 	def print_renamed(self):
 		print("total renamed:", len(self.renames_applied))
 		for obj_ea, new_name in self.renames_applied.items():
-			obj_name = idaapi.get_name(obj_ea)
+			obj_name = self.original_names.get(obj_ea)
 			print("successfully renamed", obj_name, "at", hex(obj_ea), "to", new_name)
 
 	def apply_renames(self):
