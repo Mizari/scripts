@@ -3,13 +3,22 @@ import idaapi
 import idc
 import re
 
+from dataclasses import dataclass
+@dataclass
+class DemanglingOptions:
+	skip_removes      = False
+	skip_prefixes     = False
+	skip_detemplating = False
+	skip_illegals     = False
+	skip_detilding    = False
+
 
 class Demangler:
 	# regular expression to replace some illegal c++ mangle chars for IDA names
 	ILLEGAL_CHARS = "`',()<>*+-/.&={}#!"
 	ILLEGAL_CHARS = re.compile("[" + ILLEGAL_CHARS + "]")
 
-	# regular expression to rempve c++ templates
+	# regular expression to remove c++ templates
 	DETEMPLATER = r"[<][^<>]*[>]"
 	DETEMPLATER = re.compile(DETEMPLATER)
 
@@ -35,8 +44,8 @@ class Demangler:
 		"[abi:cxx11]",
 	]
 
-	def __init__(self, skipoptions=()):
-		self.skip_options = skipoptions
+	def __init__(self, demangling_options: DemanglingOptions = DemanglingOptions()):
+		self.demangling_options = demangling_options
 
 	def demangle_string(self, string_to_demangle: str):
 		# global constructors
@@ -82,18 +91,18 @@ class Demangler:
 
 	def post_demangle(self, func_name):
 		original_name = func_name
-		def apply_func(func, skip_option):
+		def apply_func(func, should_skip):
 			nonlocal func_name
 			if func_name is None: return None
-			if skip_option in self.skip_options:
+			if should_skip:
 				return func_name
 			func_name = func(func_name)
 
-		apply_func(self.apply_removes,     "noremoves")
-		apply_func(self.apply_prefixes,    "noprefixes")
-		apply_func(self.apply_detemplater, "nodetemplater")
-		apply_func(self.apply_illegals,    "noillegals")
-		apply_func(self.apply_detilder,    "nodetilder")
+		apply_func(self.apply_removes,     self.demangling_options.skip_removes)
+		apply_func(self.apply_prefixes,    self.demangling_options.skip_prefixes)
+		apply_func(self.apply_detemplater, self.demangling_options.skip_detemplating)
+		apply_func(self.apply_illegals,    self.demangling_options.skip_illegals)
+		apply_func(self.apply_detilder,    self.demangling_options.skip_detilding)
 
 		if func_name is not None and ' ' in func_name:
 			return None
@@ -194,9 +203,9 @@ class Renamer:
 		self.functions_to_rename.clear()
 
 
-def demangle_selected_objects(*addresses, skipoptions=()):
+def demangle_selected_objects(*addresses, demangling_options=DemanglingOptions()):
 	renamer = Renamer()
-	demangler = Demangler(skipoptions=skipoptions)
+	demangler = Demangler(demangling_options=demangling_options)
 
 	for obj_ea in addresses:
 		name = idaapi.get_name(obj_ea)
@@ -211,7 +220,7 @@ def demangle_selected_objects(*addresses, skipoptions=()):
 	renamer.apply_renames()
 	return renamer
 
-def demangle_all_objects(skipoptions=()):
+def get_objects():
 	addresses = []
 	for segea in idautils.Segments():
 		segname = idc.get_segm_name(segea)
@@ -223,24 +232,31 @@ def demangle_all_objects(skipoptions=()):
 		for i in range(segstart, segend):
 			if idaapi.get_name(i) != '':
 				addresses.append(i)
-	return demangle_selected_objects(*addresses, skipoptions=skipoptions)
+	return addresses
 
+def demangle_all_objects(demangling_options=DemanglingOptions()):
+	return demangle_selected_objects(*get_objects(), demangling_options=demangling_options)
 
-def demangle_all_functions(skipoptions=()):
-	def iterate_all_functions():
-		for segea in idautils.Segments():
-			for funcea in idautils.Functions(segea, idc.get_segm_end(segea)):
-				yield funcea
-		# TODO demangle imports?
-	func_names = [idaapi.get_func_name(fea) for fea in iterate_all_functions()]
-	return demangle_selected_objects(*func_names, skipoptions=skipoptions)
+def get_functions():
+	# TODO demangle imports?
+	return [fea for fea in idautils.Functions(0, idaapi.BADADDR)]
+
+def demangle_all_functions(demangling_options=DemanglingOptions()):
+	return demangle_selected_objects(*get_functions(), demangling_options=demangling_options)
+
+def demangle_everything(demangling_options=DemanglingOptions()):
+	everything = get_objects() + get_functions()
+	demangle_selected_objects(*everything, demangling_options=demangling_options)
+
+	for struc_idx in range(idaapi.get_first_struc_idx(), idaapi.get_last_struc_idx() + 1):
+		struc_id = idaapi.get_struc_by_idx(struc_idx)
+		struc = idaapi.get_struc(struc_id)
+		struc_name = idaapi.get_struc_name(struc_id)
+		for m in struc.members:
+			print(struc_name, "member at", m.soff, idaapi.get_member_name(m.id))
 
 def main():
-	print("demangling functions")
-	demangle_all_functions()
-
-	print("demangling objects")
-	demangle_all_objects()
+	demangle_everything()
 
 if __name__ == "__main__":
 	main()
