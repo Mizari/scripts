@@ -46,6 +46,20 @@ class Demangler:
 
 	def __init__(self, demangling_options: DemanglingOptions = DemanglingOptions()):
 		self.demangling_options = demangling_options
+		self.renamer = Renamer()
+
+	def demangle_selected_objects(self, *addresses):
+		for obj_ea in addresses:
+			name = idaapi.get_name(obj_ea)
+			if name == '': continue
+
+			demangled_name = self.demangle_string(name)
+			if demangled_name is None: continue
+
+			self.renamer.add_rename(obj_ea, demangled_name)
+
+		self.renamer.resolve_conflicts()
+		self.renamer.apply_renames()
 
 	def demangle_string(self, string_to_demangle: str):
 		# global constructors
@@ -120,6 +134,7 @@ class Renamer:
 		self.renames_applied = {}
 		self.renames_failed = {}
 		self.original_names = {}
+		self.origname2newname = {}
 
 	def add_conflict(self, funcea, new_name):
 		conflicts = self.conflicting_names.setdefault(new_name, [])
@@ -144,6 +159,7 @@ class Renamer:
 
 		orig_name = idaapi.get_name(funcea)
 		self.original_names[funcea] = orig_name
+		self.origname2newname[orig_name] = new_name
 		self.functions_to_rename[new_name] = funcea
 
 	def resolve_conflicts(self):
@@ -235,25 +251,41 @@ def get_objects():
 	return addresses
 
 def demangle_all_objects(demangling_options=DemanglingOptions()):
-	return demangle_selected_objects(*get_objects(), demangling_options=demangling_options)
+	demangler = Demangler(demangling_options=demangling_options)
+	return demangler.demangle_selected_objects(*get_objects())
 
 def get_functions():
 	# TODO demangle imports?
 	return [fea for fea in idautils.Functions(0, idaapi.BADADDR)]
 
 def demangle_all_functions(demangling_options=DemanglingOptions()):
-	return demangle_selected_objects(*get_functions(), demangling_options=demangling_options)
+	demangler = Demangler(demangling_options=demangling_options)
+	return demangler.demangle_selected_objects(*get_functions())
 
 def demangle_everything(demangling_options=DemanglingOptions()):
 	everything = get_objects() + get_functions()
-	demangle_selected_objects(*everything, demangling_options=demangling_options)
+	demangler = Demangler(demangling_options=demangling_options)
+	renamer = demangler.demangle_selected_objects(*everything)
 
 	for struc_idx in range(idaapi.get_first_struc_idx(), idaapi.get_last_struc_idx() + 1):
 		struc_id = idaapi.get_struc_by_idx(struc_idx)
 		struc = idaapi.get_struc(struc_id)
 		struc_name = idaapi.get_struc_name(struc_id)
 		for m in struc.members:
-			print(struc_name, "member at", m.soff, idaapi.get_member_name(m.id))
+			member_name = idaapi.get_member_name(m.id)
+			if member_name is None:
+				print("Failed to get member name of", struc_name, "at", hex(m.m.soff))
+				continue
+
+			new_member_name = renamer.origname2newname.get(member_name)
+			if new_member_name is None:
+				new_member_name = demangler.demangle_string(member_name)
+
+			if new_member_name is None:
+				continue
+
+			if not idaapi.set_member_name(struc, m.soff, new_member_name):
+				print("Failed to rename member of", struc_name, "at", hex(m.m.soff), "to", new_member_name)
 
 def main():
 	demangle_everything()
