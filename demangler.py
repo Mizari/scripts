@@ -265,7 +265,8 @@ def demangle_all_functions(demangling_options=DemanglingOptions()):
 def demangle_everything(demangling_options=DemanglingOptions()):
 	everything = get_objects() + get_functions()
 	demangler = Demangler(demangling_options=demangling_options)
-	renamer = demangler.demangle_selected_objects(*everything)
+	demangler.demangle_selected_objects(*everything)
+	renamer = Renamer()
 
 	for struc_idx in range(idaapi.get_first_struc_idx(), idaapi.get_last_struc_idx() + 1):
 		struc_id = idaapi.get_struc_by_idx(struc_idx)
