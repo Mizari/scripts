@@ -265,16 +265,19 @@ def demangle_all_functions(demangling_options=DemanglingOptions()):
 def demangle_everything(demangling_options=DemanglingOptions()):
 	everything = get_objects() + get_functions()
 	demangler = Demangler(demangling_options=demangling_options)
-	renamer = demangler.demangle_selected_objects(*everything)
+	demangler.demangle_selected_objects(*everything)
+	renamer = Renamer()
 
 	for struc_idx in range(idaapi.get_first_struc_idx(), idaapi.get_last_struc_idx() + 1):
 		struc_id = idaapi.get_struc_by_idx(struc_idx)
+		if struc_id == idaapi.BADADDR: continue
 		struc = idaapi.get_struc(struc_id)
+		if struc is None: continue
 		struc_name = idaapi.get_struc_name(struc_id)
 		for m in struc.members:
 			member_name = idaapi.get_member_name(m.id)
 			if member_name is None:
-				print("Failed to get member name of", struc_name, "at", hex(m.m.soff))
+				print(f"Failed to get member name of {struc_name} at {hex(m.m.soff)}")
 				continue
 
 			new_member_name = renamer.origname2newname.get(member_name)
@@ -285,7 +288,7 @@ def demangle_everything(demangling_options=DemanglingOptions()):
 				continue
 
 			if not idaapi.set_member_name(struc, m.soff, new_member_name):
-				print("Failed to rename member of", struc_name, "at", hex(m.m.soff), "to", new_member_name)
+				print(f"Failed to rename member of {struc_name} at {hex(m.m.soff)} to {new_member_name}")
 
 def main():
 	demangle_everything()
